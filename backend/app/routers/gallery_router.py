@@ -6,7 +6,7 @@ from beanie.operators import In
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.core.security import create_access_token, hash_password, verify_password
-from app.dependencies.auth_deps import get_current_user, verify_gallery_token
+from app.dependencies.auth_deps import get_current_user, require_role, verify_gallery_token
 from app.models.event import Event
 from app.models.gallery import Gallery
 from app.models.photo import Photo
@@ -14,6 +14,7 @@ from app.models.user import User
 from app.schemas.gallery_schema import (
     GalleryAccessRequest,
     GalleryArchiveResponse,
+    GalleryPinUpdateRequest,
     GalleryPublishRequest,
     GalleryResponse,
     PublicGalleryInfo,
@@ -109,6 +110,24 @@ async def publish_gallery(
     clear_attempts_for_slug(gallery.slug)
 
     return _to_response(gallery)
+
+
+@router.patch("/events/{event_id}/pin")
+async def update_gallery_pin(
+    event_id: PydanticObjectId,
+    payload: GalleryPinUpdateRequest,
+    current_user: User = Depends(require_role("admin")),
+) -> dict[str, str]:
+    """Change an existing gallery PIN without changing its publication state."""
+    await get_event_as_admin(event_id, current_user)
+    gallery = await Gallery.find_one(Gallery.event_id == event_id)
+    if not gallery:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No gallery for this event yet")
+
+    gallery.pin_hash = hash_password(payload.pin)
+    await gallery.save()
+    clear_attempts_for_slug(gallery.slug)
+    return {"message": "Gallery PIN updated successfully"}
 
 
 @router.get("/events/{event_id}", response_model=GalleryResponse)

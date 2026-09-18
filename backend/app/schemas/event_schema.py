@@ -32,6 +32,16 @@ class EventResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class EventListResponse(EventResponse):
+    """Event information plus dashboard summary values."""
+
+    photo_count: int
+    selected_photo_count: int
+    published_photo_count: int
+    gallery_status: str
+    has_unpublished_changes: bool
+
+
 
 class EventDetailResponse(EventResponse):
     admin: UserSummary

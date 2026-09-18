@@ -1,6 +1,10 @@
 import os
 
 import pytest
+from beanie import PydanticObjectId
+
+from app.core.security import hash_password, verify_password
+from app.models.gallery import Gallery
 
 TEST_PASSWORD = "TestPassword123!"
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -31,7 +35,7 @@ async def register_and_login(client, email, role):
     return login_response.json()["access_token"], user_id
 
 
-async def setup_published_gallery(client, admin_token, pin="123456"):
+async def setup_published_gallery(client, admin_token, pin="1234"):
     event_response = await client.post(
         "/events",
         headers={"Authorization": f"Bearer {admin_token}"},
@@ -64,6 +68,25 @@ async def setup_published_gallery(client, admin_token, pin="123456"):
     return event_id, publish_response.json()["slug"]
 
 
+async def create_gallery_for_event(client, admin_token, pin="1234", is_published=True):
+    event_response = await client.post(
+        "/events",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"name": "PIN Test Event", "description": "PIN test"},
+    )
+    assert event_response.status_code == 201
+    event_id = PydanticObjectId(event_response.json()["id"])
+    gallery = Gallery(
+        event_id=event_id,
+        slug=f"pin-test-{event_id}",
+        pin_hash=hash_password(pin),
+        published_photo_ids=[],
+        is_published=is_published,
+    )
+    await gallery.insert()
+    return event_id, gallery
+
+
 @pytest.mark.asyncio
 async def test_cannot_publish_with_no_photos_selected(client):
     admin_token, _ = await register_and_login(client, "test_gallery_no_photos@example.com", "admin")
@@ -77,7 +100,7 @@ async def test_cannot_publish_with_no_photos_selected(client):
     response = await client.post(
         f"/galleries/events/{event_id}/publish",
         headers={"Authorization": f"Bearer {admin_token}"},
-        json={"pin": "123456"},
+        json={"pin": "1234"},
     )
 
     assert response.status_code == 400
@@ -142,11 +165,11 @@ async def test_public_info_does_not_require_auth_and_hides_photos(client):
 @pytest.mark.asyncio
 async def test_public_access_with_correct_pin(client):
     admin_token, _ = await register_and_login(client, "test_gallery_correct_pin@example.com", "admin")
-    _, slug = await setup_published_gallery(client, admin_token, pin="654321")
+    _, slug = await setup_published_gallery(client, admin_token, pin="6543")
 
     response = await client.post(
         f"/galleries/public/{slug}/access",
-        json={"pin": "654321"},
+        json={"pin": "6543"},
     )
 
     assert response.status_code == 200
@@ -161,7 +184,7 @@ async def test_public_access_with_wrong_pin(client):
 
     response = await client.post(
         f"/galleries/public/{slug}/access",
-        json={"pin": "000000"},
+        json={"pin": "0000"},
     )
 
     assert response.status_code == 401
@@ -193,7 +216,7 @@ async def test_unpublished_gallery_blocks_public_access(client):
 
     response = await client.post(
         f"/galleries/public/{slug}/access",
-        json={"pin": "123456"},
+        json={"pin": "1234"},
     )
 
     assert response.status_code == 404
@@ -204,3 +227,134 @@ async def test_nonexistent_slug_returns_404(client):
     response = await client.get("/galleries/public/this-slug-does-not-exist")
 
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_admin_can_change_gallery_pin_without_changing_gallery_state(client):
+    admin_token, _ = await register_and_login(client, "test_gallery_change_pin_admin@example.com", "admin")
+    event_id, gallery = await create_gallery_for_event(client, admin_token)
+    original_values = (
+        gallery.slug,
+        gallery.published_photo_ids.copy(),
+        gallery.is_published,
+        gallery.created_at,
+    )
+
+    response = await client.patch(
+        f"/galleries/events/{event_id}/pin",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"pin": "4920"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "Gallery PIN updated successfully"}
+    updated_gallery = await Gallery.find_one(Gallery.event_id == event_id)
+    assert updated_gallery is not None
+    assert verify_password("4920", updated_gallery.pin_hash)
+    assert not verify_password("1234", updated_gallery.pin_hash)
+    assert updated_gallery.slug == original_values[0]
+    assert updated_gallery.published_photo_ids == original_values[1]
+    assert updated_gallery.is_published == original_values[2]
+    expected_created_at = original_values[3].replace(
+        microsecond=original_values[3].microsecond // 1000 * 1000
+    )
+    assert updated_gallery.created_at.replace(tzinfo=expected_created_at.tzinfo) == expected_created_at
+
+
+@pytest.mark.asyncio
+async def test_changed_pin_controls_public_gallery_access(client):
+    admin_token, _ = await register_and_login(client, "test_gallery_change_pin_access@example.com", "admin")
+    event_id, gallery = await create_gallery_for_event(client, admin_token, pin="1234")
+
+    update_response = await client.patch(
+        f"/galleries/events/{event_id}/pin",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"pin": "4920"},
+    )
+    assert update_response.status_code == 200
+
+    old_pin_response = await client.post(
+        f"/galleries/public/{gallery.slug}/access",
+        json={"pin": "1234"},
+    )
+    new_pin_response = await client.post(
+        f"/galleries/public/{gallery.slug}/access",
+        json={"pin": "4920"},
+    )
+    assert old_pin_response.status_code == 401
+    assert new_pin_response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_team_member_cannot_change_gallery_pin(client):
+    admin_token, _ = await register_and_login(client, "test_gallery_change_pin_member_admin@example.com", "admin")
+    event_id, _ = await create_gallery_for_event(client, admin_token)
+    member_token, _ = await register_and_login(client, "test_gallery_change_pin_member@example.com", "team_member")
+
+    response = await client.patch(
+        f"/galleries/events/{event_id}/pin",
+        headers={"Authorization": f"Bearer {member_token}"},
+        json={"pin": "4920"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_other_admin_cannot_change_gallery_pin(client):
+    owner_token, _ = await register_and_login(client, "test_gallery_change_pin_owner@example.com", "admin")
+    event_id, _ = await create_gallery_for_event(client, owner_token)
+    other_admin_token, _ = await register_and_login(client, "test_gallery_change_pin_other@example.com", "admin")
+
+    response = await client.patch(
+        f"/galleries/events/{event_id}/pin",
+        headers={"Authorization": f"Bearer {other_admin_token}"},
+        json={"pin": "4920"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_change_gallery_pin_handles_missing_event_and_gallery(client):
+    admin_token, _ = await register_and_login(client, "test_gallery_change_pin_missing@example.com", "admin")
+
+    missing_event_response = await client.patch(
+        "/galleries/events/000000000000000000000000/pin",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"pin": "4920"},
+    )
+    assert missing_event_response.status_code == 404
+
+    event_response = await client.post(
+        "/events",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"name": "No Gallery Event", "description": "No gallery"},
+    )
+    event_id = event_response.json()["id"]
+    missing_gallery_response = await client.patch(
+        f"/galleries/events/{event_id}/pin",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"pin": "4920"},
+    )
+    assert missing_gallery_response.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("pin", "case_name"),
+    [("", "empty"), ("123", "short"), ("12345", "long"), ("12ab", "alpha"), ("abcd", "letters"), ("12 4", "space")],
+)
+async def test_change_gallery_pin_rejects_invalid_pin(client, pin, case_name):
+    admin_token, _ = await register_and_login(
+        client, f"test_gallery_change_pin_invalid_{case_name}@example.com", "admin"
+    )
+    event_id, _ = await create_gallery_for_event(client, admin_token)
+
+    response = await client.patch(
+        f"/galleries/events/{event_id}/pin",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"pin": pin},
+    )
+
+    assert response.status_code == 422

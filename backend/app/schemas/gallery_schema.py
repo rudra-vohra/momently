@@ -9,6 +9,10 @@ class GalleryPublishRequest(BaseModel):
     pin: str | None = Field(default=None, pattern=r"^\d{4}$")
 
 
+class GalleryPinUpdateRequest(BaseModel):
+    pin: str = Field(pattern=r"^\d{4}$")
+
+
 class GalleryResponse(BaseModel):
     id: PydanticObjectId
     event_id: PydanticObjectId
