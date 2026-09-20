@@ -15,6 +15,7 @@ from app.schemas.event_schema import (
     EventCreateRequest,
     EventListResponse,
     EventResponse,
+    SetCoverPhotoRequest,
 )
 from app.utils.storage import delete_photo_from_cloudinary
 
@@ -270,3 +271,23 @@ async def remove_team_member(
     ]
     await event.save()
     await team_member.save()
+
+@router.patch("/{event_id}/cover", response_model=EventResponse)
+async def set_cover_photo(
+    event_id: PydanticObjectId,
+    request: SetCoverPhotoRequest,
+    current_user: User = Depends(get_current_user),
+):
+    event = await Event.get(event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.admin_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only manage your own events")
+
+    photo = await Photo.get(request.photo_id)
+    if not photo or photo.event_id != event.id:
+        raise HTTPException(status_code=404, detail="Photo not found in this event")
+
+    event.cover_image_url = photo.thumbnail_url
+    await event.save()
+    return EventResponse.model_validate(event)

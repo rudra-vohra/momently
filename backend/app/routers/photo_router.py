@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.dependencies.auth_deps import get_current_user
 from app.models.event import Event
+from app.models.gallery import Gallery
 from app.models.photo import Photo
 from app.models.user import User
 from app.schemas.photo_schema import (
@@ -36,6 +37,17 @@ async def get_event_for_member(event_id: PydanticObjectId, user: User) -> Event:
     return event
 
 
+async def get_locked_published_photo_ids(
+    event_id: PydanticObjectId,
+    photo_ids: list[PydanticObjectId],
+) -> set[PydanticObjectId]:
+    """Return requested photo IDs locked by the event's published snapshot."""
+    gallery = await Gallery.find_one(Gallery.event_id == event_id)
+    if gallery is None or not gallery.is_published:
+        return set()
+    return set(photo_ids).intersection(gallery.published_photo_ids)
+
+
 @router.post("/{event_id}", response_model=PhotoUploadResponse,
              status_code=status.HTTP_201_CREATED)
 async def upload_photos(
@@ -43,7 +55,7 @@ async def upload_photos(
     files: List[UploadFile] = File(...),
     current_user: User = Depends(get_current_user),
 ):
-    await get_event_for_member(event_id, current_user)
+    event = await get_event_for_member(event_id, current_user)
 
     valid, failed = [], []
     for f in files:
@@ -79,6 +91,10 @@ async def upload_photos(
         insert_result = await Photo.insert_many(photos)
         for photo, inserted_id in zip(photos, insert_result.inserted_ids):
             photo.id = inserted_id
+        
+        if event.cover_image_url is None:
+            event.cover_image_url = photos[0].thumbnail_url
+            await event.save()
 
     return PhotoUploadResponse(uploaded=photos, failed=failed)
 
@@ -102,6 +118,15 @@ async def select_photos(
     if event.admin_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the event admin can select photos")
 
+    locked_photo_ids = await get_locked_published_photo_ids(
+        event_id, payload.photo_ids
+    )
+    if locked_photo_ids:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Cannot change selection of a photo that is part of the published gallery. Unpublish the gallery first.",
+        )
+
     result = await Photo.find(
         Photo.event_id == event_id,
         In(Photo.id, payload.photo_ids),
@@ -119,6 +144,16 @@ async def update_selection(
     event = await get_event_for_member(event_id, current_user)
     if event.admin_id != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the event admin can select photos")
+
+    requested_photo_ids = [*body.select, *body.deselect]
+    locked_photo_ids = await get_locked_published_photo_ids(
+        event_id, requested_photo_ids
+    )
+    if locked_photo_ids:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Cannot change selection of a photo that is part of the published gallery. Unpublish the gallery first.",
+        )
 
     updated = 0
     for ids, value in ((body.select, True), (body.deselect, False)):
@@ -149,6 +184,13 @@ async def delete_photo(
     event = await get_event_for_member(photo.event_id, current_user)
     if event.admin_id != current_user.id and photo.uploaded_by != current_user.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Cannot delete this photo")
+
+    locked_photo_ids = await get_locked_published_photo_ids(photo.event_id, [photo.id])
+    if locked_photo_ids:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Cannot delete a photo that is part of the published gallery. Unpublish the gallery first.",
+        )
 
     await delete_photo_from_cloudinary(photo.storage_key)
     await photo.delete()

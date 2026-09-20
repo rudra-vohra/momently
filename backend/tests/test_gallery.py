@@ -5,6 +5,7 @@ from beanie import PydanticObjectId
 
 from app.core.security import hash_password, verify_password
 from app.models.gallery import Gallery
+from app.models.photo import Photo
 
 TEST_PASSWORD = "TestPassword123!"
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -85,6 +86,20 @@ async def create_gallery_for_event(client, admin_token, pin="1234", is_published
     )
     await gallery.insert()
     return event_id, gallery
+
+
+async def create_snapshot_photo(event_id, uploaded_by, index, selected):
+    photo = Photo(
+        event_id=event_id,
+        uploaded_by=PydanticObjectId(uploaded_by),
+        filename=f"snapshot-{index}.jpg",
+        url=f"https://example.com/snapshot-{index}.jpg",
+        storage_key=f"photo_sharing/snapshot/{event_id}/{index}",
+        file_size=10,
+        selected_for_gallery=selected,
+    )
+    await photo.insert()
+    return photo
 
 
 @pytest.mark.asyncio
@@ -227,6 +242,235 @@ async def test_nonexistent_slug_returns_404(client):
     response = await client.get("/galleries/public/this-slug-does-not-exist")
 
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_published_gallery_photos_use_snapshot_order_and_event_filter(client):
+    admin_token, admin_id = await register_and_login(
+        client, "test_gallery_snapshot_photos_admin@example.com", "admin"
+    )
+    event_id, gallery = await create_gallery_for_event(
+        client, admin_token, is_published=False
+    )
+    first_photo = await create_snapshot_photo(event_id, admin_id, 1, selected=False)
+    second_photo = await create_snapshot_photo(event_id, admin_id, 2, selected=True)
+    foreign_event_id, foreign_gallery = await create_gallery_for_event(client, admin_token)
+    foreign_photo = await create_snapshot_photo(foreign_event_id, admin_id, 3, selected=True)
+    missing_photo_id = PydanticObjectId()
+    gallery.published_photo_ids = [
+        second_photo.id,
+        missing_photo_id,
+        foreign_photo.id,
+        first_photo.id,
+    ]
+    await gallery.save()
+
+    response = await client.get(
+        f"/galleries/events/{event_id}/photos",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    assert [photo["id"] for photo in response.json()] == [
+        str(second_photo.id),
+        str(first_photo.id),
+    ]
+    assert all(photo["event_id"] == str(event_id) for photo in response.json())
+    stored_gallery = await Gallery.get(gallery.id)
+    assert stored_gallery.published_photo_ids == [
+        second_photo.id,
+        missing_photo_id,
+        foreign_photo.id,
+        first_photo.id,
+    ]
+    assert foreign_gallery.is_published is True
+
+
+@pytest.mark.asyncio
+async def test_team_member_cannot_read_published_gallery_photos(client):
+    admin_token, _ = await register_and_login(
+        client, "test_gallery_snapshot_member_admin@example.com", "admin"
+    )
+    event_id, _ = await create_gallery_for_event(client, admin_token)
+    member_token, _ = await register_and_login(
+        client, "test_gallery_snapshot_member@example.com", "team_member"
+    )
+
+    response = await client.get(
+        f"/galleries/events/{event_id}/photos",
+        headers={"Authorization": f"Bearer {member_token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_other_admin_cannot_read_published_gallery_photos(client):
+    owner_token, _ = await register_and_login(
+        client, "test_gallery_snapshot_owner_admin@example.com", "admin"
+    )
+    event_id, _ = await create_gallery_for_event(client, owner_token)
+    other_admin_token, _ = await register_and_login(
+        client, "test_gallery_snapshot_other_admin@example.com", "admin"
+    )
+
+    response = await client.get(
+        f"/galleries/events/{event_id}/photos",
+        headers={"Authorization": f"Bearer {other_admin_token}"},
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_published_gallery_photos_requires_existing_event_and_gallery(client):
+    admin_token, _ = await register_and_login(
+        client, "test_gallery_snapshot_missing_admin@example.com", "admin"
+    )
+    missing_event_response = await client.get(
+        "/galleries/events/000000000000000000000000/photos",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert missing_event_response.status_code == 404
+
+    event_response = await client.post(
+        "/events",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"name": "Snapshot Without Gallery", "description": "No gallery"},
+    )
+    event_id = event_response.json()["id"]
+    missing_gallery_response = await client.get(
+        f"/galleries/events/{event_id}/photos",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert missing_gallery_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_published_gallery_photos_requires_authentication(client):
+    admin_token, _ = await register_and_login(
+        client, "test_gallery_snapshot_auth_admin@example.com", "admin"
+    )
+    event_id, _ = await create_gallery_for_event(client, admin_token)
+
+    response = await client.get(f"/galleries/events/{event_id}/photos")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_snapshot_adds_selected_photos_in_order_without_duplicates(client):
+    admin_token, admin_id = await register_and_login(
+        client, "test_gallery_update_snapshot_admin@example.com", "admin"
+    )
+    event_id, gallery = await create_gallery_for_event(client, admin_token)
+    photo_c = await create_snapshot_photo(event_id, admin_id, 1, selected=False)
+    photo_a = await create_snapshot_photo(event_id, admin_id, 2, selected=True)
+    photo_d = await create_snapshot_photo(event_id, admin_id, 3, selected=True)
+    photo_b = await create_snapshot_photo(event_id, admin_id, 4, selected=True)
+    photo_e = await create_snapshot_photo(event_id, admin_id, 5, selected=True)
+    gallery.published_photo_ids = [photo_c.id, photo_a.id, photo_d.id]
+    await gallery.save()
+
+    response = await client.patch(
+        f"/galleries/events/{event_id}/snapshot",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    updated_gallery = await Gallery.get(gallery.id)
+    assert updated_gallery.published_photo_ids == [
+        photo_c.id,
+        photo_a.id,
+        photo_d.id,
+        photo_b.id,
+        photo_e.id,
+    ]
+    assert response.json()["photo_count"] == 5
+
+    second_response = await client.patch(
+        f"/galleries/events/{event_id}/snapshot",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert second_response.status_code == 200
+    updated_again = await Gallery.get(gallery.id)
+    assert updated_again.published_photo_ids == updated_gallery.published_photo_ids
+
+
+@pytest.mark.asyncio
+async def test_update_snapshot_ignores_selected_photo_from_another_event(client):
+    admin_token, admin_id = await register_and_login(
+        client, "test_gallery_update_snapshot_filter_admin@example.com", "admin"
+    )
+    event_id, gallery = await create_gallery_for_event(client, admin_token)
+    own_photo = await create_snapshot_photo(event_id, admin_id, 1, selected=True)
+    other_event_id, _ = await create_gallery_for_event(client, admin_token)
+    foreign_photo = await create_snapshot_photo(other_event_id, admin_id, 2, selected=True)
+    gallery.published_photo_ids = []
+    await gallery.save()
+
+    response = await client.patch(
+        f"/galleries/events/{event_id}/snapshot",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 200
+    updated_gallery = await Gallery.get(gallery.id)
+    assert updated_gallery.published_photo_ids == [own_photo.id]
+    assert foreign_photo.id not in updated_gallery.published_photo_ids
+
+
+@pytest.mark.asyncio
+async def test_update_snapshot_rejects_unpublished_or_missing_gallery(client):
+    admin_token, _ = await register_and_login(
+        client, "test_gallery_update_snapshot_errors_admin@example.com", "admin"
+    )
+    unpublished_event_id, _ = await create_gallery_for_event(
+        client, admin_token, is_published=False
+    )
+    unpublished_response = await client.patch(
+        f"/galleries/events/{unpublished_event_id}/snapshot",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert unpublished_response.status_code == 400
+
+    event_response = await client.post(
+        "/events",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"name": "Snapshot Missing Gallery", "description": "No gallery"},
+    )
+    missing_gallery_response = await client.patch(
+        f"/galleries/events/{event_response.json()['id']}/snapshot",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert missing_gallery_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_only_event_owner_admin_can_update_snapshot(client):
+    owner_token, _ = await register_and_login(
+        client, "test_gallery_update_snapshot_owner@example.com", "admin"
+    )
+    event_id, _ = await create_gallery_for_event(client, owner_token)
+    other_admin_token, _ = await register_and_login(
+        client, "test_gallery_update_snapshot_other_admin@example.com", "admin"
+    )
+    member_token, _ = await register_and_login(
+        client, "test_gallery_update_snapshot_member@example.com", "team_member"
+    )
+
+    other_admin_response = await client.patch(
+        f"/galleries/events/{event_id}/snapshot",
+        headers={"Authorization": f"Bearer {other_admin_token}"},
+    )
+    member_response = await client.patch(
+        f"/galleries/events/{event_id}/snapshot",
+        headers={"Authorization": f"Bearer {member_token}"},
+    )
+
+    assert other_admin_response.status_code == 403
+    assert member_response.status_code == 403
 
 
 @pytest.mark.asyncio

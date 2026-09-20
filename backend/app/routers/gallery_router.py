@@ -21,6 +21,7 @@ from app.schemas.gallery_schema import (
     PublicGalleryResponse,
     PublicPhoto,
 )
+from app.schemas.photo_schema import PhotoResponse
 from app.utils.rate_limit import (
     check_pin_attempts,
     clear_attempts,
@@ -140,6 +141,69 @@ async def get_gallery(
     gallery = await Gallery.find_one(Gallery.event_id == event_id)
     if not gallery:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No gallery for this event yet")
+    return _to_response(gallery)
+
+
+@router.get("/events/{event_id}/photos", response_model=List[PhotoResponse])
+async def get_published_gallery_photos(
+    event_id: PydanticObjectId,
+    current_user: User = Depends(require_role("admin")),
+) -> List[PhotoResponse]:
+    """Return the event's photos in the stored published gallery order."""
+    await get_event_as_admin(event_id, current_user)
+    gallery = await Gallery.find_one(Gallery.event_id == event_id)
+    if gallery is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No gallery for this event yet")
+
+    published_photo_ids = gallery.published_photo_ids
+    if not published_photo_ids:
+        return []
+
+    photos = await Photo.find(
+        In(Photo.id, published_photo_ids),
+        Photo.event_id == event_id,
+    ).to_list()
+    photos_by_id = {photo.id: photo for photo in photos}
+    return [
+        PhotoResponse.model_validate(photos_by_id[photo_id])
+        for photo_id in published_photo_ids
+        if photo_id in photos_by_id
+    ]
+
+
+@router.patch("/events/{event_id}/snapshot", response_model=GalleryResponse)
+async def update_gallery_snapshot(
+    event_id: PydanticObjectId,
+    current_user: User = Depends(require_role("admin")),
+) -> GalleryResponse:
+    """Add currently selected event photos to an existing published snapshot."""
+    await get_event_as_admin(event_id, current_user)
+    gallery = await Gallery.find_one(Gallery.event_id == event_id)
+    if gallery is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No gallery for this event yet")
+    if not gallery.is_published:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Gallery must be published before updating its snapshot",
+        )
+
+    selected_photos = await Photo.find(
+        Photo.event_id == event_id,
+        Photo.selected_for_gallery == True,  # noqa: E712
+    ).to_list()
+    snapshot_ids = []
+    snapshot_id_set = set()
+    for photo_id in gallery.published_photo_ids:
+        if photo_id not in snapshot_id_set:
+            snapshot_ids.append(photo_id)
+            snapshot_id_set.add(photo_id)
+    for photo in selected_photos:
+        if photo.id not in snapshot_id_set:
+            snapshot_ids.append(photo.id)
+            snapshot_id_set.add(photo.id)
+
+    gallery.published_photo_ids = snapshot_ids
+    await gallery.save()
     return _to_response(gallery)
 
 

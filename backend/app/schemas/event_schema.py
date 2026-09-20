@@ -28,7 +28,7 @@ class EventResponse(BaseModel):
     admin_id: PydanticObjectId
     team_member_ids: List[PydanticObjectId]
     created_at: datetime
-
+    cover_image_url: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -46,3 +46,7 @@ class EventListResponse(EventResponse):
 class EventDetailResponse(EventResponse):
     admin: UserSummary
     team_members: List[UserSummary]
+
+class SetCoverPhotoRequest(BaseModel):
+    photo_id: PydanticObjectId
+
