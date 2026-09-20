@@ -30,8 +30,6 @@ Client enters the gallery PIN
 Client views and downloads photos
 ```
 
-Momently keeps the current photo selection separate from the photos that have already been published. This lets the photographer continue working on new photos without changing the gallery that the client is currently viewing.
-
 ## Features
 
 ### Event Management
@@ -49,7 +47,7 @@ Admins can:
 
 Team members can work on events assigned to them.
 
-They can upload photos and select photos for the gallery according to their permissions.
+They can upload photos  for the gallery according to their permissions.
 
 ### Photo Management
 
@@ -433,14 +431,6 @@ Vercel FastAPI Backend
        └── Cloudinary
 ```
 
-The frontend uses:
-
-```text
-VITE_API_URL
-```
-
-The backend uses environment variables for database, JWT, Cloudinary, and CORS configuration.
-
 ## Upload Architecture
 
 ```text
@@ -459,7 +449,7 @@ Uploaded photo returned to frontend
 Photo appears immediately in workspace
 ```
 
-The frontend uses size-aware batching for the production Vercel deployment.
+The frontend uses size-aware batching for the production deployment.
 
 The user can select many photos at once. The frontend automatically splits them into smaller requests and uploads the batches sequentially.
 
@@ -543,5 +533,6 @@ VITE_API_URL
 
 ## Project Status
 
-Momently is an actively developed project.
+Momently is an actively deployed project.
+
 Try it urself using the link: https://momently-steg.vercel.app/
