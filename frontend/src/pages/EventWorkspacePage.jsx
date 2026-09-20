@@ -395,7 +395,7 @@ export default function EventWorkspacePage() {
     }
   }
 
-  // Upload handler (Multipart/form-data)
+  // Upload handler (Multipart/form-data with size-aware batching)
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
@@ -407,36 +407,21 @@ export default function EventWorkspacePage() {
     setUploadProgress({
       total: files.length,
       current: 0,
-      percent: 25,
-      filename: `Uploading ${files.length} ${files.length === 1 ? 'photo' : 'photos'}...`,
-      message: `Uploading ${files.length} ${files.length === 1 ? 'photo' : 'photos'}...`,
+      percent: 5,
+      filename: `Preparing ${files.length} ${files.length === 1 ? 'photo' : 'photos'}...`,
+      message: `Preparing ${files.length} ${files.length === 1 ? 'photo' : 'photos'}...`,
       failedFiles: [],
     })
 
     try {
-      setUploadProgress({
-        total: files.length,
-        current: files.length,
-        percent: 65,
-        filename: `Processing ${files.length} ${files.length === 1 ? 'photo' : 'photos'}...`,
-        message: `Processing ${files.length} ${files.length === 1 ? 'photo' : 'photos'}...`,
-        failedFiles: [],
-      })
+      // Callback to stream newly uploaded photos to UI state as each batch completes
+      const handleBatchSuccess = (newPhotos) => {
+        if (!newPhotos || newPhotos.length === 0) return
 
-      // 1. ONE bulk upload request sent to POST /photos/{event_id}
-      const result = await photosService.uploadPhotos(eventId, files)
-      
-      // 2. Consume result.uploaded directly from the successful response
-      const uploadedPhotos = Array.isArray(result?.uploaded) ? result.uploaded : []
-      const failedList = Array.isArray(result?.failed) ? result.failed : []
-
-      // 3 & 4. Prepend newly uploaded PhotoResponse objects into local state without calling GET /photos/{event_id}
-      if (uploadedPhotos.length > 0) {
         setPhotos((prevPhotos) => {
-          // 6. Strict deduplication to avoid duplicate photos in local state
           const existingIds = new Set(prevPhotos.map((p) => p?.id).filter(Boolean))
           const freshPhotos = []
-          for (const photo of uploadedPhotos) {
+          for (const photo of newPhotos) {
             if (photo && photo.id && !existingIds.has(photo.id)) {
               existingIds.add(photo.id)
               freshPhotos.push(photo)
@@ -446,12 +431,21 @@ export default function EventWorkspacePage() {
         })
 
         // If event had no cover photo set yet, set it to the first uploaded photo
-        if (!eventData?.cover_image_url && uploadedPhotos[0]?.thumbnail_url) {
+        if (!eventData?.cover_image_url && newPhotos[0]?.thumbnail_url) {
           setEventData((prev) =>
-            prev ? { ...prev, cover_image_url: uploadedPhotos[0].thumbnail_url } : prev
+            prev ? { ...prev, cover_image_url: newPhotos[0].thumbnail_url } : prev
           )
         }
       }
+
+      // Execute size-aware batch upload sequentially
+      const { uploaded: uploadedPhotos, failed: failedList } =
+        await photosService.uploadPhotosInBatches(eventId, files, {
+          onBatchSuccess: handleBatchSuccess,
+          onProgress: (progress) => {
+            setUploadProgress(progress)
+          },
+        })
 
       if (failedList.length > 0 && uploadedPhotos.length > 0) {
         // Partial success: some uploaded, some failed
@@ -512,6 +506,7 @@ export default function EventWorkspacePage() {
         failedFiles: [errorMsg],
       })
     } finally {
+      setIsUploading(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }

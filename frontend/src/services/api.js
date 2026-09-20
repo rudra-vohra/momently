@@ -3,6 +3,14 @@
  * Connects to the FastAPI backend at http://localhost:8000
  */
 
+import {
+  SAFE_UPLOAD_BATCH_SIZE_BYTES,
+  createUploadBatches,
+  formatBytesToMb,
+} from './uploadHelper'
+
+export { SAFE_UPLOAD_BATCH_SIZE_BYTES, createUploadBatches, formatBytesToMb }
+
 const API_BASE_URL = import.meta.env.VITE_API_URL
 
 /**
@@ -189,7 +197,7 @@ export const photosService = {
   },
 
   /**
-   * Upload multiple image files to an event (multipart/form-data)
+   * Upload multiple image files to an event (multipart/form-data single request)
    */
   async uploadPhotos(eventId, files) {
     const formData = new FormData()
@@ -200,6 +208,128 @@ export const photosService = {
       method: 'POST',
       body: formData,
     })
+  },
+
+  /**
+   * Upload multiple image files in size-aware sequential batches to strictly respect
+   * Vercel's 4.5 MB request payload ceiling.
+   *
+   * @param {string} eventId
+   * @param {File[]} files
+   * @param {Object} [options]
+   * @param {Function} [options.onBatchSuccess] - Callback when a batch uploads successfully: (uploadedPhotos) => void
+   * @param {Function} [options.onProgress] - Callback reporting upload progress: (progress) => void
+   * @param {number} [options.maxBatchSize] - Safe batch size threshold in bytes (default: SAFE_UPLOAD_BATCH_SIZE_BYTES)
+   * @returns {Promise<{ uploaded: Array, failed: Array<string> }>}
+   */
+  async uploadPhotosInBatches(
+    eventId,
+    files,
+    { onBatchSuccess, onProgress, maxBatchSize = SAFE_UPLOAD_BATCH_SIZE_BYTES } = {}
+  ) {
+    if (!files || files.length === 0) {
+      return { uploaded: [], failed: [] }
+    }
+
+    const { batches, oversized } = createUploadBatches(files, maxBatchSize)
+    const totalFiles = files.length
+    const allUploaded = []
+    const allFailed = []
+
+    // 1. Immediately flag any files that individually exceed the safe batch size
+    for (const file of oversized) {
+      const sizeStr = formatBytesToMb(file.size)
+      const limitStr = formatBytesToMb(maxBatchSize)
+      allFailed.push(
+        `${file.name || 'File'}: File size (${sizeStr}) exceeds maximum allowed upload limit of ${limitStr}`
+      )
+    }
+
+    let processedFilesCount = oversized.length
+
+    // Report initial progress state
+    if (typeof onProgress === 'function') {
+      const initialPercent = totalFiles > 0 ? Math.round((processedFilesCount / totalFiles) * 15) : 0
+      onProgress({
+        total: totalFiles,
+        current: allUploaded.length,
+        percent: initialPercent,
+        filename: `Preparing ${totalFiles} ${totalFiles === 1 ? 'photo' : 'photos'}...`,
+        message: `Preparing ${totalFiles} ${totalFiles === 1 ? 'photo' : 'photos'}...`,
+        failedFiles: [...allFailed],
+      })
+    }
+
+    // 2. Upload batches sequentially
+    for (let i = 0; i < batches.length; i++) {
+      const currentBatch = batches[i]
+      const batchNum = i + 1
+      const totalBatches = batches.length
+
+      // Report active batch upload progress
+      if (typeof onProgress === 'function') {
+        const batchProgressStart = Math.min(
+          95,
+          Math.round(((processedFilesCount + currentBatch.length * 0.2) / totalFiles) * 100)
+        )
+        const activeMsg =
+          totalBatches > 1
+            ? `Uploading batch ${batchNum} of ${totalBatches} (${currentBatch.length} ${currentBatch.length === 1 ? 'photo' : 'photos'})...`
+            : `Uploading ${currentBatch.length} ${currentBatch.length === 1 ? 'photo' : 'photos'}...`
+
+        onProgress({
+          total: totalFiles,
+          current: allUploaded.length,
+          percent: batchProgressStart,
+          filename: activeMsg,
+          message: activeMsg,
+          failedFiles: [...allFailed],
+        })
+      }
+
+      try {
+        const result = await this.uploadPhotos(eventId, currentBatch)
+        const batchUploaded = Array.isArray(result?.uploaded) ? result.uploaded : []
+        const batchFailed = Array.isArray(result?.failed) ? result.failed : []
+
+        allUploaded.push(...batchUploaded)
+        allFailed.push(...batchFailed)
+
+        // Stream newly uploaded photos to UI state immediately
+        if (batchUploaded.length > 0 && typeof onBatchSuccess === 'function') {
+          onBatchSuccess(batchUploaded)
+        }
+      } catch (err) {
+        console.error(`Batch ${batchNum} upload failed:`, err)
+        const errMsg = err.message || 'Upload request failed'
+        for (const f of currentBatch) {
+          allFailed.push(`${f.name || 'File'}: ${errMsg}`)
+        }
+      } finally {
+        processedFilesCount += currentBatch.length
+        if (typeof onProgress === 'function') {
+          const completedPercent = Math.min(
+            98,
+            Math.round((processedFilesCount / totalFiles) * 100)
+          )
+          const completedMsg =
+            totalBatches > 1
+              ? `Uploaded batch ${batchNum} of ${totalBatches} (${allUploaded.length}/${totalFiles} photos)...`
+              : `Processing photos...`
+
+          onProgress({
+            total: totalFiles,
+            current: allUploaded.length,
+            percent: completedPercent,
+            filename: completedMsg,
+            message: completedMsg,
+            failedFiles: [...allFailed],
+          })
+        }
+      }
+    }
+
+    return { uploaded: allUploaded, failed: allFailed }
   },
 
   /**
