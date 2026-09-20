@@ -28,7 +28,7 @@ export default function GalleryPinPage({ isDemo = false }) {
   })
   const [pinDigits, setPinDigits] = useState(['', '', '', ''])
   const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(!isDemoMode)
   const [isVerifying, setIsVerifying] = useState(false)
   const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)]
 
@@ -41,22 +41,41 @@ export default function GalleryPinPage({ isDemo = false }) {
         photo_count: DEMO_PHOTOS.length,
       })
       setIsLoading(false)
+      setError('')
       return
     }
 
+    let isMounted = true
+
     async function fetchInfo() {
-      if (!slug) return
+      if (!slug) {
+        setIsLoading(false)
+        return
+      }
       setIsLoading(true)
+      setGalleryInfo(null)
+      setError('')
       try {
         const info = await galleriesService.getPublicGalleryInfo(slug)
-        setGalleryInfo(info)
+        if (isMounted) {
+          setGalleryInfo(info)
+        }
       } catch (err) {
-        console.error('Gallery not found or unpublished:', err)
+        if (isMounted) {
+          console.error('Gallery not found or unpublished:', err)
+          setError(err.message || 'Gallery not found or is no longer accessible.')
+        }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
     fetchInfo()
+
+    return () => {
+      isMounted = false
+    }
   }, [slug, isDemoMode])
 
   useEffect(() => {
@@ -96,6 +115,11 @@ export default function GalleryPinPage({ isDemo = false }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (isLoading || isVerifying) return
+    if (!galleryInfo && !isDemoMode) {
+      setError('Gallery details could not be loaded. Please refresh or check the URL.')
+      return
+    }
     const pin = pinDigits.join('')
     if (pin.length < 4) {
       setError('Please enter all 4 digits.')
@@ -143,8 +167,8 @@ export default function GalleryPinPage({ isDemo = false }) {
     }
   }
 
-  const eventTitle = galleryInfo?.event_name || 'Protected Gallery'
-  const photosCount = galleryInfo?.photo_count ?? 12
+  const eventTitle = galleryInfo?.event_name || ''
+  const photosCount = galleryInfo?.photo_count
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFAF3] text-[#1A1817] antialiased selection:bg-[#FFE5BF] selection:text-[#BB0028]">
@@ -216,12 +240,40 @@ export default function GalleryPinPage({ isDemo = false }) {
               <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#FFE5BF] text-[#BB0028] mb-2.5 shadow-xs">
                 <span className="material-symbols-outlined text-lg">lock</span>
               </div>
-              <h1 className="font-heading font-bold text-xl sm:text-2xl tracking-tight text-[#1A1817]">
-                {eventTitle}
-              </h1>
-              <p className="text-stone-600 mt-1 mb-5 text-xs sm:text-sm font-normal">
-                {photosCount} {photosCount === 1 ? 'photo is' : 'photos are'} waiting for you
-              </p>
+
+              {isLoading ? (
+                /* Stable skeleton placeholders matching typography & line-height */
+                <div aria-busy="true" aria-label="Loading gallery details">
+                  <div className="flex justify-center items-center h-7 sm:h-8">
+                    <div className="h-6 sm:h-7 w-48 sm:w-56 bg-[#FFE5BF]/70 animate-pulse rounded-lg" />
+                  </div>
+                  <div className="flex justify-center items-center mt-1 mb-5 h-4 sm:h-5">
+                    <div className="h-3.5 sm:h-4 w-36 sm:w-44 bg-[#FFE5BF]/50 animate-pulse rounded-md" />
+                  </div>
+                </div>
+              ) : error && !galleryInfo ? (
+                /* Error state when gallery metadata cannot be loaded */
+                <div>
+                  <h1 className="font-heading font-bold text-xl sm:text-2xl tracking-tight text-[#1A1817]">
+                    Gallery Unavailable
+                  </h1>
+                  <p className="text-stone-600 mt-1 mb-5 text-xs sm:text-sm font-normal">
+                    This gallery could not be loaded
+                  </p>
+                </div>
+              ) : (
+                /* Loaded real gallery data */
+                <div>
+                  <h1 className="font-heading font-bold text-xl sm:text-2xl tracking-tight text-[#1A1817]">
+                    {eventTitle}
+                  </h1>
+                  <p className="text-stone-600 mt-1 mb-5 text-xs sm:text-sm font-normal">
+                    {photosCount !== undefined
+                      ? `${photosCount} ${photosCount === 1 ? 'photo is' : 'photos are'} waiting for you`
+                      : 'Photos waiting for you'}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Form */}
@@ -268,8 +320,8 @@ export default function GalleryPinPage({ isDemo = false }) {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isVerifying}
-                className="w-full bg-[#BB0028] hover:bg-[#F62440] active:scale-[0.99] text-white font-semibold py-3.5 px-6 rounded-xl shadow-md transition-all duration-200 flex items-center justify-center gap-2 text-base cursor-pointer focus:outline-none focus:ring-4 focus:ring-[#F62440]/30 disabled:opacity-75"
+                disabled={isVerifying || isLoading || (Boolean(error) && !galleryInfo)}
+                className="w-full bg-[#BB0028] hover:bg-[#F62440] active:scale-[0.99] text-white font-semibold py-3.5 px-6 rounded-xl shadow-md transition-all duration-200 flex items-center justify-center gap-2 text-base cursor-pointer focus:outline-none focus:ring-4 focus:ring-[#F62440]/30 disabled:opacity-75 disabled:cursor-not-allowed"
               >
                 {isVerifying ? (
                   <>
