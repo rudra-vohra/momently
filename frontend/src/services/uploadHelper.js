@@ -5,10 +5,10 @@
  * 3.8 MB (3,984,588 bytes) provides a conservative ~700 KB buffer for multipart
  * boundary markers, Content-Disposition headers, and form-data framing.
  */
-export const SAFE_UPLOAD_BATCH_SIZE_BYTES = 3.8 * 1024 * 1024
+export const SAFE_UPLOAD_BATCH_SIZE_BYTES = 4.3 * 1024 * 1024
 
 /**
- * Formats bytes into a human-readable MB string (e.g., "3.8 MB").
+ * Formats bytes into a human-readable MB string (e.g., "4.3 MB").
  *
  * @param {number} bytes
  * @returns {string}
