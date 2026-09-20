@@ -1,0 +1,175 @@
+/* ==========================================================================
+   Momently Design System — Design Tokens
+   Source: Stitch "Warm Event Flow" DESIGN.md
+   ========================================================================== */
+
+:root {
+  /* ── Brand Colors ──────────────────────────────────────────────────────── */
+  --color-primary: #F62440;
+  --color-primary-hover: #DE1A34;
+  --color-primary-container: #e61337;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #fffbff;
+
+  /* ── Secondary & Tertiary ──────────────────────────────────────────────── */
+  --color-secondary: #FFE5BF;
+  --color-secondary-hover: #FFDCAC;
+  --color-secondary-container: #f9dfb9;
+
+  /* ── Surface & Canvas ──────────────────────────────────────────────────── */
+  --color-surface: #FFF2DB;
+  --color-canvas: #FFFAF3;
+  --color-surface-container-lowest: #ffffff;
+
+  /* ── Typography Neutrals ───────────────────────────────────────────────── */
+  --color-text-heading: #1F1F1F;
+  --color-text-body: #2D2D2D;
+  --color-text-muted: #5A544F;
+  --color-text-subtle: #666666;
+
+  /* ── Borders & Outlines ────────────────────────────────────────────────── */
+  --color-border: #F0E1CD;
+  --color-outline: #926e6d;
+  --color-outline-variant: #e7bcbb;
+
+  /* ── Error ─────────────────────────────────────────────────────────────── */
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  /* ── Status ────────────────────────────────────────────────────────────── */
+  --color-success: #2e7d32;
+  --color-warning: #e65100;
+
+  /* ── Material Design Surface Tokens (from Stitch) ──────────────────────── */
+  --md-surface: #fcf9f8;
+  --md-surface-dim: #dcd9d9;
+  --md-surface-bright: #fcf9f8;
+  --md-surface-container-low: #f6f3f2;
+  --md-surface-container: #f0eded;
+  --md-surface-container-high: #eae7e7;
+  --md-surface-container-highest: #e5e2e1;
+  --md-on-surface: #1b1b1c;
+  --md-on-surface-variant: #5d3f3e;
+  --md-inverse-surface: #303030;
+  --md-inverse-on-surface: #f3f0ef;
+  --md-primary: #bb0028;
+  --md-secondary: #6e5c3e;
+  --md-tertiary: #635b4a;
+
+  /* ── Typography — Font Families ────────────────────────────────────────── */
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* ── Typography — Display ──────────────────────────────────────────────── */
+  --display-lg-size: 3.5rem;
+  --display-lg-weight: 800;
+  --display-lg-line-height: 4rem;
+  --display-lg-tracking: -0.03em;
+
+  --display-lg-mobile-size: 2.25rem;
+  --display-lg-mobile-weight: 800;
+  --display-lg-mobile-line-height: 2.75rem;
+  --display-lg-mobile-tracking: -0.02em;
+
+  /* ── Typography — Headlines ────────────────────────────────────────────── */
+  --headline-lg-size: 2.25rem;
+  --headline-lg-weight: 700;
+  --headline-lg-line-height: 2.75rem;
+  --headline-lg-tracking: -0.02em;
+
+  --headline-lg-mobile-size: 1.75rem;
+  --headline-lg-mobile-weight: 700;
+  --headline-lg-mobile-line-height: 2.25rem;
+  --headline-lg-mobile-tracking: -0.015em;
+
+  --headline-md-size: 1.5rem;
+  --headline-md-weight: 700;
+  --headline-md-line-height: 2rem;
+  --headline-md-tracking: -0.015em;
+
+  --headline-sm-size: 1.25rem;
+  --headline-sm-weight: 600;
+  --headline-sm-line-height: 1.75rem;
+  --headline-sm-tracking: -0.01em;
+
+  /* ── Typography — Body ─────────────────────────────────────────────────── */
+  --body-lg-size: 1.125rem;
+  --body-lg-weight: 400;
+  --body-lg-line-height: 1.75rem;
+
+  --body-md-size: 1rem;
+  --body-md-weight: 400;
+  --body-md-line-height: 1.5rem;
+
+  --body-sm-size: 0.875rem;
+  --body-sm-weight: 400;
+  --body-sm-line-height: 1.375rem;
+
+  /* ── Typography — Labels & Meta ────────────────────────────────────────── */
+  --label-md-size: 0.875rem;
+  --label-md-weight: 600;
+  --label-md-line-height: 1.25rem;
+  --label-md-tracking: 0.01em;
+
+  --label-sm-size: 0.75rem;
+  --label-sm-weight: 600;
+  --label-sm-line-height: 1rem;
+  --label-sm-tracking: 0.02em;
+
+  --code-sm-size: 0.75rem;
+  --code-sm-weight: 500;
+  --code-sm-line-height: 1rem;
+  --code-sm-tracking: 0.01em;
+
+  --metadata-badge-size: 0.6875rem;
+  --metadata-badge-weight: 600;
+  --metadata-badge-line-height: 0.875rem;
+  --metadata-badge-tracking: 0.04em;
+
+  /* ── Spacing ───────────────────────────────────────────────────────────── */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --gutter: 1.5rem;
+  --gutter-mobile: 0.75rem;
+  --margin: 2.5rem;
+  --margin-mobile: 1rem;
+
+  /* ── Border Radius ─────────────────────────────────────────────────────── */
+  --radius-sm: 0.25rem;
+  --radius-default: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ── Elevation / Shadows (warm-tinted) ─────────────────────────────────── */
+  --shadow-level-0: none;
+  --shadow-level-1: none; /* Cards use border instead */
+  --shadow-level-2: 0 4px 20px -2px rgba(80, 50, 20, 0.06),
+                    0 2px 6px -1px rgba(80, 50, 20, 0.04);
+  --shadow-level-3: 0 16px 40px -8px rgba(60, 30, 10, 0.12),
+                    0 4px 12px -2px rgba(60, 30, 10, 0.06);
+  --shadow-button-hover: 0 4px 14px rgba(246, 36, 64, 0.25);
+  --shadow-header: 0 1px 8px rgba(80, 50, 20, 0.04);
+
+  /* ── Backdrop / Translucency ───────────────────────────────────────────── */
+  --backdrop-frosted: rgba(255, 250, 243, 0.85);
+  --backdrop-blur: blur(12px);
+
+  /* ── Breakpoints (for reference in media queries) ──────────────────────── */
+  /* Mobile:  < 768px   — 4 columns */
+  /* Tablet:  768–1279px — 8 columns */
+  /* Desktop: 1280px+   — 12 columns */
+
+  /* ── Transitions ───────────────────────────────────────────────────────── */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
+  --transition-bounce: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}

@@ -1,0 +1,437 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Momently — Tailwind v4 Theme Configuration
+   Source: Stitch "Warm Event Flow" DESIGN.md
+   ========================================================================== */
+
+@theme {
+  /* ── Stitch Colors ─────────────────────────────────────────────────────── */
+  --color-primary: #bb0028;
+  --color-primary-hover: #f62440;
+  --color-primary-container: #e61337;
+  --color-primary-fixed: #ffdad8;
+  --color-primary-fixed-dim: #ffb3b1;
+  --color-on-primary: #ffffff;
+  --color-on-primary-fixed: #410007;
+  --color-on-primary-fixed-variant: #92001d;
+  --color-on-primary-container: #fffbff;
+  --color-inverse-primary: #ffb3b1;
+
+  --color-secondary: #6e5c3e;
+  --color-secondary-container: #f9dfb9;
+  --color-secondary-fixed: #f9dfb9;
+  --color-secondary-fixed-dim: #dbc39f;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-fixed: #261903;
+  --color-on-secondary-fixed-variant: #554428;
+  --color-on-secondary-container: #746243;
+
+  --color-tertiary: #635b4a;
+  --color-tertiary-container: #7d7461;
+  --color-tertiary-fixed: #eee1cb;
+  --color-tertiary-fixed-dim: #d1c5b0;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-fixed: #211b0d;
+  --color-on-tertiary-fixed-variant: #4e4635;
+  --color-on-tertiary-container: #fffbff;
+
+  --color-surface: #fcf9f8;
+  --color-surface-dim: #dcd9d9;
+  --color-surface-bright: #fcf9f8;
+  --color-surface-variant: #e5e2e1;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f6f3f2;
+  --color-surface-container: #f0eded;
+  --color-surface-container-high: #eae7e7;
+  --color-surface-container-highest: #e5e2e1;
+  --color-surface-tint: #bf0029;
+
+  --color-background: #fcf9f8;
+  --color-on-background: #1b1b1c;
+  --color-on-surface: #1b1b1c;
+  --color-on-surface-variant: #5d3f3e;
+  --color-inverse-surface: #303030;
+  --color-inverse-on-surface: #f3f0ef;
+
+  --color-outline: #926e6d;
+  --color-outline-variant: #e7bcbb;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  /* ── Spacing Scale (matching Stitch) ─────────────────────────────────── */
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2.5rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-gutter-mobile: 0.75rem;
+  --spacing-margin: 2.5rem;
+  --spacing-margin-mobile: 1rem;
+
+  /* ── Font Families ─────────────────────────────────────────────────────── */
+  --font-heading: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --font-display-lg: 'Plus Jakarta Sans', sans-serif;
+  --font-display-lg-mobile: 'Plus Jakarta Sans', sans-serif;
+  --font-headline-lg: 'Plus Jakarta Sans', sans-serif;
+  --font-headline-lg-mobile: 'Plus Jakarta Sans', sans-serif;
+  --font-headline-md: 'Plus Jakarta Sans', sans-serif;
+  --font-headline-sm: 'Plus Jakarta Sans', sans-serif;
+  --font-body-lg: 'DM Sans', sans-serif;
+  --font-body-md: 'DM Sans', sans-serif;
+  --font-body-sm: 'DM Sans', sans-serif;
+  --font-label-md: 'DM Sans', sans-serif;
+  --font-label-sm: 'DM Sans', sans-serif;
+  --font-metadata-badge: 'JetBrains Mono', monospace;
+  --font-code-sm: 'JetBrains Mono', monospace;
+
+  /* ── Typography Sizes ─────────────────────────────────────────────────── */
+  --text-display-lg: 3.5rem;
+  --text-display-lg--line-height: 4rem;
+  --text-display-lg--letter-spacing: -0.03em;
+  --text-display-lg--font-weight: 800;
+
+  --text-display-lg-mobile: 2.25rem;
+  --text-display-lg-mobile--line-height: 2.75rem;
+  --text-display-lg-mobile--letter-spacing: -0.02em;
+  --text-display-lg-mobile--font-weight: 800;
+
+  --text-headline-lg: 2.25rem;
+  --text-headline-lg--line-height: 2.75rem;
+  --text-headline-lg--letter-spacing: -0.02em;
+  --text-headline-lg--font-weight: 700;
+
+  --text-headline-lg-mobile: 1.75rem;
+  --text-headline-lg-mobile--line-height: 2.25rem;
+  --text-headline-lg-mobile--letter-spacing: -0.015em;
+  --text-headline-lg-mobile--font-weight: 700;
+
+  --text-headline-md: 1.5rem;
+  --text-headline-md--line-height: 2rem;
+  --text-headline-md--letter-spacing: -0.015em;
+  --text-headline-md--font-weight: 700;
+
+  --text-headline-sm: 1.25rem;
+  --text-headline-sm--line-height: 1.75rem;
+  --text-headline-sm--letter-spacing: -0.01em;
+  --text-headline-sm--font-weight: 600;
+
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.75rem;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.5rem;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.375rem;
+  --text-body-sm--font-weight: 400;
+
+  --text-label-md: 0.875rem;
+  --text-label-md--line-height: 1.25rem;
+  --text-label-md--letter-spacing: 0.01em;
+  --text-label-md--font-weight: 600;
+
+  --text-label-sm: 0.75rem;
+  --text-label-sm--line-height: 1rem;
+  --text-label-sm--letter-spacing: 0.02em;
+  --text-label-sm--font-weight: 600;
+
+  --text-metadata-badge: 0.6875rem;
+  --text-metadata-badge--line-height: 0.875rem;
+  --text-metadata-badge--letter-spacing: 0.04em;
+  --text-metadata-badge--font-weight: 600;
+
+  --text-code-sm: 0.75rem;
+  --text-code-sm--line-height: 1rem;
+  --text-code-sm--letter-spacing: 0.01em;
+  --text-code-sm--font-weight: 500;
+
+  /* ── Border Radius ─────────────────────────────────────────────────────── */
+  --radius-DEFAULT: 0.25rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ── Shadows ───────────────────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(80, 50, 20, 0.04);
+  --shadow-sm: 0 1px 3px rgba(80, 50, 20, 0.05);
+  --shadow-md: 0 4px 20px -2px rgba(80, 50, 20, 0.06), 0 2px 6px -1px rgba(80, 50, 20, 0.04);
+  --shadow-lg: 0 12px 28px -6px rgba(80, 50, 20, 0.08);
+  --shadow-xl: 0 16px 40px -8px rgba(60, 30, 10, 0.12), 0 4px 12px -2px rgba(60, 30, 10, 0.06);
+
+  /* ── Animations ────────────────────────────────────────────────────────── */
+  --animate-fade-in: fade-in 0.4s ease forwards;
+  --animate-spin: spin 1s linear infinite;
+  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Base Overrides */
+html {
+  scroll-behavior: smooth;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  font-family: var(--font-body);
+  color: var(--color-on-surface);
+  background-color: var(--color-surface);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: var(--font-body);
+  color: var(--color-on-surface);
+  background-color: var(--color-surface);
+}
+
+/* Custom Sleek Scrollbar for Momently */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-container-low, #f6f3f2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-secondary-fixed-dim, #dbc39f);
+  border-radius: 9999px;
+  border: 2px solid var(--color-surface-container-low, #f6f3f2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary, #6e5c3e);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-secondary-fixed-dim, #dbc39f) var(--color-surface-container-low, #f6f3f2);
+}
+
+/* Scoped scrollbar suppression for horizontal decks only */
+.scrollbar-none,
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  user-select: none;
+  line-height: 1;
+}
+
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.momently-logo {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
+  cursor: pointer;
+  transform-origin: center;
+}
+.momently-logo:hover {
+  transform: scale(1.08) translateY(-2px);
+  filter: drop-shadow(0 6px 14px rgba(187, 0, 40, 0.25));
+}
+
+.momently-pop {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.momently-pop:hover {
+  transform: translateY(-2px) scale(1.04);
+}
+
+/* ==========================================================================
+   Modal Pop In & Pop Out Animations
+   ========================================================================== */
+@keyframes modalPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.85) translateY(14px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.03) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modalPopOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  30% {
+    opacity: 0.95;
+    transform: scale(1.02) translateY(-2px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.85) translateY(12px);
+  }
+}
+
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes backdropFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-modal-pop-in {
+  animation: modalPopIn 0.28s cubic-bezier(0.34, 1.45, 0.64, 1) forwards;
+  will-change: transform, opacity;
+  transform-origin: center center;
+}
+
+.animate-modal-pop-out {
+  animation: modalPopOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity;
+  transform-origin: center center;
+}
+
+.animate-backdrop-in {
+  animation: backdropFadeIn 0.24s ease-out forwards;
+}
+
+.animate-backdrop-out {
+  animation: backdropFadeOut 0.2s ease-in forwards;
+}
+
+/* ==========================================================================
+   Page & Workspace Navigation Slide Transitions
+   ========================================================================== */
+@keyframes workspaceSlideOut {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+
+@keyframes dashboardSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-workspace-slide-out {
+  animation: workspaceSlideOut 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-dashboard-slide-in {
+  animation: dashboardSlideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* ==========================================================================
+   Team Member Addition & Removal Transitions
+   ========================================================================== */
+@keyframes memberEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes memberExit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    max-height: 80px;
+  }
+  50% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+    max-height: 0;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}
+
+.animate-member-pop-in {
+  animation: memberEnter 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.animate-member-pop-out {
+  animation: memberExit 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity, max-height;
+  pointer-events: none;
+  overflow: hidden;
+}
+
