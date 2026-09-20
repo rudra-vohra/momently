@@ -423,17 +423,25 @@ export default function EventWorkspacePage() {
         failedFiles: [],
       })
 
-      // ONE bulk upload request sent to POST /photos/{event_id}
+      // 1. ONE bulk upload request sent to POST /photos/{event_id}
       const result = await photosService.uploadPhotos(eventId, files)
       
-      const uploadedPhotos = result?.uploaded || []
-      const failedList = result?.failed || []
+      // 2. Consume result.uploaded directly from the successful response
+      const uploadedPhotos = Array.isArray(result?.uploaded) ? result.uploaded : []
+      const failedList = Array.isArray(result?.failed) ? result.failed : []
 
-      // Immediately add newly uploaded photos to local state without page refresh/refetch
+      // 3 & 4. Prepend newly uploaded PhotoResponse objects into local state without calling GET /photos/{event_id}
       if (uploadedPhotos.length > 0) {
         setPhotos((prevPhotos) => {
-          const existingIds = new Set(prevPhotos.map((p) => p.id))
-          const freshPhotos = uploadedPhotos.filter((p) => !existingIds.has(p.id))
+          // 6. Strict deduplication to avoid duplicate photos in local state
+          const existingIds = new Set(prevPhotos.map((p) => p?.id).filter(Boolean))
+          const freshPhotos = []
+          for (const photo of uploadedPhotos) {
+            if (photo && photo.id && !existingIds.has(photo.id)) {
+              existingIds.add(photo.id)
+              freshPhotos.push(photo)
+            }
+          }
           return [...freshPhotos, ...prevPhotos]
         })
 
